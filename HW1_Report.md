@@ -1,5 +1,6 @@
 # ITEC 3170 Section 01 — Homework 1: Data Fundamentals
-**Author:** Michael Gligore
+**Author:** Matthew Gligore
+
 **Date:** March 6, 2026
 
 ---
@@ -67,18 +68,131 @@ disproven or refined.
 curl 'https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.csv' > fema_disasters.csv
 ```
 
+The dataset downloaded successfully (21.8 MB, 69,635 rows).
+
 ### Step 2: Inspect Columns
 
-*(To be completed)*
+```bash
+head -1 fema_disasters.csv | tr ',' '\n' | cat -n
+```
+
+The dataset contains 28 columns:
+
+| # | Column Name |
+|---|-------------|
+| 1 | femaDeclarationString |
+| 2 | disasterNumber |
+| 3 | state |
+| 4 | declarationType |
+| 5 | declarationDate |
+| 6 | fyDeclared |
+| 7 | incidentType |
+| 8 | declarationTitle |
+| 9 | ihProgramDeclared |
+| 10 | iaProgramDeclared |
+| 11 | paProgramDeclared |
+| 12 | hmProgramDeclared |
+| 13 | incidentBeginDate |
+| 14 | incidentEndDate |
+| 15 | disasterCloseoutDate |
+| 16 | tribalRequest |
+| 17 | fipsStateCode |
+| 18 | fipsCountyCode |
+| 19 | placeCode |
+| 20 | designatedArea |
+| 21 | declarationRequestNumber |
+| 22 | lastIAFilingDate |
+| 23 | incidentId |
+| 24 | region |
+| 25 | designatedIncidentTypes |
+| 26 | lastRefresh |
+| 27 | hash |
+| 28 | id |
+
+**Selected columns for analysis:** state (3), declarationType (4), fyDeclared (6), incidentType (7), designatedArea (20).
 
 ### Step 3: Extract Columns with awk
 
-*(To be completed)*
+```bash
+awk -F ',' '{print $3","$4","$6","$7","$20}' fema_disasters.csv > fema_selected_columns.csv
+```
+
+This produced a working file with 5 columns: state, declarationType, fyDeclared, incidentType, and designatedArea.
+
+Sample output:
+```
+state,declarationType,fyDeclared,incidentType,designatedArea
+OR,FM,2024,Fire,Washington (County)
+OR,FM,2024,Fire,Jefferson (County)
+CA,DR,2017,Severe Storm,Resighini Rancheria (Indian Reservation)
+```
 
 ### Step 4: Initial Analysis with awk
 
-*(To be completed)*
+**Top 15 states by number of disaster declarations:**
+
+```bash
+awk -F ',' 'NR>1 {count[$1]++} END {for (s in count) print count[s], s}' fema_selected_columns.csv | sort -rn | head -15
+```
+
+| Rank | State | Declarations |
+|------|-------|-------------|
+| 1 | TX | 5,388 |
+| 2 | KY | 3,355 |
+| 3 | MO | 2,830 |
+| 4 | FL | 2,791 |
+| 5 | GA | 2,765 |
+| 6 | VA | 2,756 |
+| 7 | LA | 2,662 |
+| 8 | OK | 2,589 |
+| 9 | NC | 2,431 |
+| 10 | PR | 2,116 |
+| 11 | MS | 2,085 |
+| 12 | TN | 1,966 |
+| 13 | IA | 1,926 |
+| 14 | KS | 1,910 |
+| 15 | AR | 1,824 |
+
+Texas leads by a large margin. Four of the five Gulf Coast states (TX, FL, LA, MS) appear in the top 11. Alabama (AL) does not appear in the top 15.
+
+**Incident types for Gulf Coast states (TX, LA, MS, AL, FL) — 14,668 total declarations:**
+
+```bash
+awk -F ',' 'NR>1 && ($1=="TX" || $1=="LA" || $1=="MS" || $1=="AL" || $1=="FL") {count[$4]++} END {for (t in count) print count[t], t}' fema_selected_columns.csv | sort -rn
+```
+
+| Incident Type | Count | % of Gulf Coast |
+|---------------|-------|----------------|
+| Hurricane | 5,675 | 38.7% |
+| Severe Storm | 2,612 | 17.8% |
+| Fire | 1,544 | 10.5% |
+| Flood | 1,279 | 8.7% |
+| Biological | 1,114 | 7.6% |
+| Severe Ice Storm | 761 | 5.2% |
+| Other types | 1,683 | 11.5% |
+
+Hurricanes are the #1 incident type for Gulf Coast states at 38.7%, with Severe Storms second at 17.8%. Combined, hurricanes and severe storms account for **56.5%** of all Gulf Coast disaster declarations.
+
+**Incident types for non-Gulf-Coast states — 54,966 total declarations:**
+
+| Incident Type | Count | % of Non-Gulf |
+|---------------|-------|--------------|
+| Severe Storm | 16,687 | 30.4% |
+| Flood | 9,955 | 18.1% |
+| Hurricane | 8,046 | 14.6% |
+| Biological | 6,743 | 12.3% |
+| Snowstorm | 3,526 | 6.4% |
+
+For non-Gulf states, Severe Storms lead (30.4%) and Hurricanes are only 14.6%.
 
 ### Step 5: Early Conclusions
 
-*(To be completed)*
+**The hypothesis is partially supported:**
+
+1. **Gulf Coast states do rank high in disaster declarations.** Texas is the #1 state by a wide margin, and 4 of 5 Gulf Coast states appear in the top 11. However, non-Gulf states like Kentucky (#2), Missouri (#3), and Virginia (#6) also rank very high, so Gulf Coast dominance is not absolute.
+
+2. **Hurricanes are the dominant incident type for Gulf Coast states.** At 38.7% of declarations, hurricanes are by far the leading cause. Combined with severe storms (17.8%), hurricane/storm events account for 56.5% of Gulf Coast declarations. This is in sharp contrast to non-Gulf states where hurricanes are only 14.6%.
+
+3. **"Disproportionately higher" is nuanced.** The 5 Gulf Coast states account for 14,668 declarations out of 69,634 total (21.1%). Since they represent roughly 10% of U.S. states, they do receive a disproportionate share — about 2x what would be expected from an even distribution.
+
+**Overall:** The data supports the hypothesis that Gulf Coast states receive disproportionately more disaster declarations and that hurricanes are the primary driver. The hypothesis could be refined to note that Texas alone is a massive outlier, and that some non-Gulf Southern states (KY, GA, VA) also have very high declaration counts driven by severe storms rather than hurricanes.
