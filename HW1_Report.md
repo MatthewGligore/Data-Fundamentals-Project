@@ -60,7 +60,6 @@ disproven or refined.
 
 ## Steps and Results
 
-*(Results will be documented below as the analysis proceeds.)*
 
 ### Step 1: Download the Data
 
@@ -196,3 +195,135 @@ For non-Gulf states, Severe Storms lead (30.4%) and Hurricanes are only 14.6%.
 3. **"Disproportionately higher" is nuanced.** The 5 Gulf Coast states account for 14,668 declarations out of 69,634 total (21.1%). Since they represent roughly 10% of U.S. states, they do receive a disproportionate share — about 2x what would be expected from an even distribution.
 
 **Overall:** The data supports the hypothesis that Gulf Coast states receive disproportionately more disaster declarations and that hurricanes are the primary driver. The hypothesis could be refined to note that Texas alone is a massive outlier, and that some non-Gulf Southern states (KY, GA, VA) also have very high declaration counts driven by severe storms rather than hurricanes.
+
+---
+
+## Homework 2 Continuation (Spark + Python)
+
+### Repository Link
+
+Project repository: https://github.com/MatthewGligore/Data-Fundamentals-HW1
+
+### Hypothesis and Problem Statement
+
+This was already established in Homework 1 and remains the same for this continuation:
+
+- **Problem Statement:** Identify geographic patterns in FEMA disaster declarations and determine which regions and incident types drive declaration volume.
+- **Hypothesis:** Gulf Coast states (TX, LA, MS, AL, FL) have a disproportionately high number of federal disaster declarations, primarily driven by hurricanes and severe storms.
+
+### How the Data is Used to Validate/Disprove the Hypothesis
+
+To validate or disprove the hypothesis, I use FEMA disaster declaration records and:
+
+1. Inspect columns and keep only fields needed for state-level and incident-level analysis.
+2. Use Spark DataFrame operations to compute declaration totals by state.
+3. Use Spark SQL to compute incident-type frequencies specifically for Gulf Coast states.
+4. Compare these outcomes to determine whether Gulf states rank high overall and whether hurricane/storm incidents dominate in that region.
+
+If Gulf states are not highly represented, or if hurricane/storm categories are not leading incident types, the hypothesis would be disproven or revised.
+
+### Spark and Python Files
+
+The following files were added/used for this assignment:
+
+- `spark_analysis.py` (PySpark DataFrame + Spark SQL workflow)
+- `spark_output/gulf_incident_counts/part-00000-d44fedd1-e05c-4125-a961-47f6cdcdff48-c000.csv` (Spark output part file)
+
+### Step A: Use `head` to Display Columns and Select Processing Fields
+
+Command run:
+
+```bash
+head -1 fema_disasters.csv | tr ',' '\n' | nl
+```
+
+This confirmed all 28 columns in the dataset. For this Spark phase, I selected:
+
+- `state`
+- `declarationType`
+- `fyDeclared`
+- `incidentType`
+- `designatedArea`
+
+Spark DataFrame selection:
+
+```python
+selected_df = disasters_df.select(
+    "state", "declarationType", "fyDeclared", "incidentType", "designatedArea"
+)
+```
+
+Sample (`selected_df.show(5)`):
+
+```text
++-----+---------------+----------+------------+--------------------+
+|state|declarationType|fyDeclared|incidentType|designatedArea      |
++-----+---------------+----------+------------+--------------------+
+|PR   |EM             |2024      |Severe Storm|Adjuntas (Municipio)|
+|OR   |FM             |2024      |Fire        |Washington (County) |
+|OR   |FM             |2024      |Fire        |Jefferson (County)  |
+|OR   |FM             |2024      |Fire        |Deschutes (County)  |
+|PR   |EM             |2024      |Severe Storm|Aguada (Municipio)  |
++-----+---------------+----------+------------+--------------------+
+```
+
+### Step B: Extract Data and Compute Outcomes Using Spark DataFrame and Spark SQL
+
+#### Outcome 1 (DataFrame API): Top States by Declarations
+
+```python
+state_totals_df = (
+    selected_df.groupBy("state")
+    .count()
+    .withColumnRenamed("count", "declaration_count")
+    .orderBy(F.desc("declaration_count"))
+)
+```
+
+Top 10 results:
+
+| Rank | State | Declarations |
+|------|-------|--------------|
+| 1 | TX | 5,389 |
+| 2 | KY | 3,355 |
+| 3 | MO | 2,830 |
+| 4 | FL | 2,794 |
+| 5 | GA | 2,768 |
+| 6 | VA | 2,756 |
+| 7 | LA | 2,671 |
+| 8 | OK | 2,593 |
+| 9 | NC | 2,431 |
+| 10 | MS | 2,129 |
+
+#### Outcome 2 (Spark SQL): Gulf Coast Incident-Type Counts
+
+```sql
+SELECT
+    incidentType,
+    COUNT(*) AS incident_count
+FROM disasters
+WHERE state IN ('TX', 'LA', 'MS', 'AL', 'FL')
+GROUP BY incidentType
+ORDER BY incident_count DESC
+```
+
+Top incident results (from Spark output part file):
+
+| Incident Type | Count |
+|---------------|-------|
+| Hurricane | 5,675 |
+| Severe Storm | 2,612 |
+| Fire | 1,548 |
+| Flood | 1,279 |
+| Biological | 1,114 |
+| Severe Ice Storm | 761 |
+
+### Updated Conclusions
+
+Compared to the HW1 snapshot, the conclusion is **not materially different**:
+
+1. Gulf Coast states remain heavily represented in disaster declarations, with Texas still the largest outlier.
+2. Hurricanes remain the primary incident type in Gulf Coast declarations, with severe storms second.
+3. The hypothesis is still supported, but with the same nuance as HW1: some non-Gulf states also have very high declaration volumes, so "disproportionate" applies strongly to the Gulf region overall but not exclusively.
+
+In short, Spark-based analysis confirms the same directional finding from HW1 while using scalable DataFrame and SQL methods.
