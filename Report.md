@@ -202,7 +202,7 @@ For non-Gulf states, Severe Storms lead (30.4%) and Hurricanes are only 14.6%.
 
 ### Repository Link
 
-Project repository: https://github.com/MatthewGligore/Data-Fundamentals-HW1
+Project repository: https://github.com/MatthewGligore/Data-Fundamentals-Project
 
 ### Hypothesis and Problem Statement
 
